@@ -52,10 +52,10 @@ Optional settings:
 ./install.sh --start 07:00 --timezone Europe/Istanbul
 ```
 
-The installer automatically finds and verifies an executable `codex` launcher,
+The installer automatically finds and verifies the executable `codex` launcher,
 then writes only its path and schedule metadata to
-`~/.config/codex-limit-saver/config.env` with mode `600`. This handles npm's
-JavaScript launcher without treating its non-executable module file as a binary.
+`~/.config/codex-limit-saver/config.env` with mode `600`. This preserves npm's
+launcher rather than resolving it to an implementation file.
 
 ## Verify and operate
 

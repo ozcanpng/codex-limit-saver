@@ -6,7 +6,7 @@ app_name=codex-limit-saver
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/$app_name"
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/$app_name"
-lib_dir="${XDG_DATA_HOME:-$HOME/.local/share}/$app_name"
+lib_dir="$HOME/.local/lib/$app_name"
 systemd_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 start_time=07:00
 
@@ -44,17 +44,7 @@ if ! command -v codex >/dev/null; then
   exit 1
 fi
 
-codex_command="$(command -v codex)"
-# Keep an executable launcher. In npm installations `readlink -f` can resolve
-# the launcher to codex.js, which is a JavaScript module rather than an
-# executable file. A symlink is resolved only when its final target is itself
-# executable.
-resolved_codex="$(readlink -f "$codex_command")"
-if [[ -x "$resolved_codex" ]]; then
-  codex_bin="$resolved_codex"
-else
-  codex_bin="$codex_command"
-fi
+codex_bin="$(command -v codex)"
 if ! "$codex_bin" --version >/dev/null; then
   echo "The discovered Codex executable cannot run: $codex_bin" >&2
   exit 1
