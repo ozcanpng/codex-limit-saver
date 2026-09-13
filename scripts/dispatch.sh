@@ -74,7 +74,7 @@ printf '%s\n' "$due_reset" > "$handled_file"
 {
   printf '\n===== run_started=%s reset_detected=%s =====\n' \
     "$(date '+%F %T %Z')" "$(date -d "@$due_reset" '+%F %T %Z')"
-  "$CODEX_BIN" exec --ephemeral --skip-git-repo-check --sandbox read-only --color never hello
+  "$CODEX_BIN" exec --ignore-user-config --ephemeral --skip-git-repo-check --sandbox read-only --color never hello
   status=$?
   printf '===== run_finished=%s exit_status=%s =====\n' "$(date '+%F %T %Z')" "$status"
   exit "$status"

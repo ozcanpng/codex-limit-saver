@@ -91,7 +91,9 @@ logs. It does not remove Codex or its authentication.
 ## Safety notes
 
 - The exact prompt is `hello`.
-- Invocations use `codex exec --ephemeral --sandbox read-only`.
+- Invocations use `codex exec --ignore-user-config --ephemeral --sandbox read-only`.
+- `--ignore-user-config` keeps Codex authentication but avoids loading personal
+  config such as optional MCP servers for this scheduler-only request.
 - The log records `reset_observed` and `hello_eligible_after` for each reset.
 - If the JSON-RPC response is unavailable or malformed, no prompt is sent.
 - `codex app-server` is marked experimental by Codex CLI; the included reader
