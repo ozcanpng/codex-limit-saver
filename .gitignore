@@ -1,0 +1,3 @@
+# Runtime configuration and logs are installed outside this repository.
+*.log
+.DS_Store

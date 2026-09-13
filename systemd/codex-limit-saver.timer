@@ -1,0 +1,14 @@
+[Unit]
+Description=Persistent scheduler for an anchored five-hour Codex cycle
+
+[Timer]
+# The dispatcher computes the five-hour sequence. Checking once per minute
+# preserves a 07:00 anchor even though 24 hours is not divisible by five.
+OnCalendar=*-*-* *:*:00
+Persistent=true
+AccuracySec=1s
+RandomizedDelaySec=0
+Unit=codex-limit-saver.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Submit the scheduled hello prompt through Codex CLI
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/lib/codex-limit-saver/dispatch.sh
