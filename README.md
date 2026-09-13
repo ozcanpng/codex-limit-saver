@@ -96,6 +96,8 @@ logs. It does not remove Codex or its authentication.
   config such as optional MCP servers for this scheduler-only request.
 - The log records every newly reported `reset_observed` time and its matching
   `hello_eligible_after` time.
+- After each `hello`, the same log block records `next_reset` and
+  `next_hello_eligible_after`.
 - If the JSON-RPC response is unavailable or malformed, no prompt is sent.
 - `codex app-server` is marked experimental by Codex CLI; the included reader
   checks its response rather than scraping UI text.

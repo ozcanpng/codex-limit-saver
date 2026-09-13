@@ -81,6 +81,17 @@ printf '%s\n' "$due_reset" > "$handled_file"
     "$(date '+%F %T %Z')" "$(date -d "@$due_reset" '+%F %T %Z')"
   "$CODEX_BIN" exec --ignore-user-config --ephemeral --skip-git-repo-check --sandbox read-only --color never hello
   status=$?
+  if next_reset="$($lib_dir/read-rate-limit.py "$CODEX_BIN" 2>>"$log_file")" \
+    && [[ "$next_reset" =~ ^[0-9]+$ ]] \
+    && (( next_reset > $(date +%s) )); then
+    printf '%s\n' "$next_reset" > "$seen_file"
+    printf '%s\n' "$next_reset" > "$logged_file"
+    printf 'next_reset=%s next_hello_eligible_after=%s\n' \
+      "$(date -d "@$next_reset" '+%F %T %Z')" \
+      "$(date -d "@$((next_reset + GRACE_SECONDS))" '+%F %T %Z')"
+  else
+    printf 'next_reset=unavailable; it will be retried on the next timer check\n'
+  fi
   printf '===== run_finished=%s exit_status=%s =====\n' "$(date '+%F %T %Z')" "$status"
   exit "$status"
 } >> "$log_file" 2>&1
