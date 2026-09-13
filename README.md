@@ -1,38 +1,44 @@
 # codex-limit-saver
 
-Run a minimal Codex CLI prompt (`hello`) on a persistent, anchored five-hour
-cycle. It is useful when you want a new Codex usage window to begin regularly.
+Submit a minimal Codex CLI prompt (`hello`) shortly after the account's actual
+five-hour usage window resets.
 
-This project does not bypass limits, create API keys, or store credentials. It
-uses the existing Codex CLI authentication in `~/.codex`.
+This project does not bypass, extend, or reset limits. It does not create API
+keys or store credentials. It uses the existing Codex CLI authentication in
+`~/.codex`.
 
-## Why not fixed daily timer hours?
+## How it works
 
-Five hours does not divide evenly into a 24-hour day. A daily timer such as
-`07:00,12:00,17:00,22:00` breaks the interval at midnight. This project anchors
-the schedule at 07:00 and calculates every later execution as exactly 18,000
-seconds after that anchor:
+Instead of guessing a five-hour schedule from a fixed clock time, the
+dispatcher queries Codex CLI's machine-readable app-server JSON-RPC endpoint:
 
 ```text
-07:00 → 12:00 → 17:00 → 22:00 → 03:00 → 08:00 → 13:00 → 18:00 → ...
+initialize → account/rateLimits/read → rateLimits.primary.resetsAt
 ```
 
-The systemd timer wakes the lightweight dispatcher once a minute. The
-dispatcher invokes Codex only for an eligible five-hour slot. This is necessary
-to preserve the non-daily cadence and let a `Persistent=true` timer catch up
-after a shutdown. If one or more slots elapsed while the computer was off, the
-most recent missed slot runs once shortly after startup.
+`resetsAt` is a Unix timestamp supplied by Codex. The tool records the observed
+timestamp and runs `codex exec hello` when Codex reports that this reset has
+passed. Its per-user systemd timer wakes the lightweight dispatcher once a
+minute; Codex is only invoked after a newly observed reset.
+
+This avoids parsing ANSI terminal output from `/status`, depending on a local
+database, or using an undocumented HTTP endpoint. JSON is decoded by Python's
+standard library and validated before a prompt can be submitted.
+
+If the computer is off over a reset, systemd's `Persistent=true` timer starts
+the dispatcher on the next opportunity. It detects the newer reset timestamp
+and sends one catch-up `hello` for the missed transition.
 
 ## Requirements
 
 - Linux with a working per-user `systemd` manager (Ubuntu, Debian, Fedora,
   Arch, openSUSE, and similar distributions)
-- Bash, GNU `date`, and `systemctl`
+- Bash, Python 3, GNU `date`, and `systemctl`
 - Codex CLI installed, in `PATH`, and already authenticated
 
 There is no reliable single scheduler API for every Linux init system. This
-repository deliberately targets systemd because it provides per-user timers,
-boot persistence, and reliable logging. Non-systemd systems are not supported.
+repository deliberately targets systemd for per-user timers and persistence;
+non-systemd systems are not supported.
 
 ## Install
 
@@ -42,20 +48,16 @@ cd codex-limit-saver
 ./install.sh
 ```
 
-By default, installation anchors today at 07:00 in the machine's configured
-timezone. If that time has already passed, the next future point in the same
-five-hour sequence is used; historical prompts are not sent retroactively.
-
-Optional settings:
+By default, `hello` is submitted at least 60 seconds after the detected reset.
+Larger safety buffers are supported:
 
 ```bash
-./install.sh --start 07:00 --timezone Europe/Istanbul
+./install.sh --grace-seconds 90
 ```
 
-The installer automatically finds and verifies the executable `codex` launcher,
-then writes only its path and schedule metadata to
-`~/.config/codex-limit-saver/config.env` with mode `600`. This preserves npm's
-launcher rather than resolving it to an implementation file.
+The installer discovers and verifies the executable `codex` launcher, then
+writes only that path and the grace period to
+`~/.config/codex-limit-saver/config.env` with mode `600`.
 
 ## Verify and operate
 
@@ -64,12 +66,18 @@ systemctl --user status codex-limit-saver.timer
 systemctl --user list-timers codex-limit-saver.timer --all
 journalctl --user-unit=codex-limit-saver.service -f
 tail -f ~/.local/state/codex-limit-saver/codex-limit-saver.log
-./scripts/verify-schedule.sh Europe/Istanbul
+~/.local/lib/codex-limit-saver/read-rate-limit.py "$(command -v codex)"
 ```
 
-The log records each scheduled timestamp, complete stdout/stderr, and exit
-status. `loginctl enable-linger "$USER"` is attempted during installation so the
-per-user manager can remain available after logout and across reboots.
+The final command prints the primary reset timestamp without submitting a
+prompt. Convert it to local time with:
+
+```bash
+date -d "@$(~/.local/lib/codex-limit-saver/read-rate-limit.py "$(command -v codex)")"
+```
+
+`loginctl enable-linger "$USER"` is attempted during installation so the
+per-user manager can continue after logout and across reboots.
 
 ## Uninstall
 
@@ -77,15 +85,17 @@ per-user manager can remain available after logout and across reboots.
 ./uninstall.sh
 ```
 
-This removes the installed unit files, runtime script, configuration, state,
-and logs. It does not remove Codex or its authentication.
+This removes installed unit files, runtime scripts, configuration, state, and
+logs. It does not remove Codex or its authentication.
 
 ## Safety notes
 
 - The exact prompt is `hello`.
 - Invocations use `codex exec --ephemeral --sandbox read-only`.
-- Existing Codex configuration may start optional MCP servers; their diagnostic
-  output is retained in the log.
+- The log records `reset_observed` and `hello_eligible_after` for each reset.
+- If the JSON-RPC response is unavailable or malformed, no prompt is sent.
+- `codex app-server` is marked experimental by Codex CLI; the included reader
+  checks its response rather than scraping UI text.
 
 ## License
 
