@@ -24,6 +24,7 @@ mkdir -p "$state_dir"
 
 seen_file="$state_dir/last-seen-reset"
 handled_file="$state_dir/last-handled-reset"
+logged_file="$state_dir/last-logged-reset"
 now_epoch="$(date +%s)"
 
 if ! resets_at="$($lib_dir/read-rate-limit.py "$CODEX_BIN" 2>>"$log_file")"; then
@@ -35,6 +36,18 @@ if ! [[ "$resets_at" =~ ^[0-9]+$ ]] || (( resets_at <= now_epoch )); then
   exit 1
 fi
 
+# Log each newly reported future reset exactly once, including when the
+# scheduler is reinstalled while that reset is already stored as state.
+last_logged=0
+[[ -r "$logged_file" ]] && read -r last_logged < "$logged_file" || true
+if (( resets_at != last_logged )); then
+  printf '%s\n' "$resets_at" > "$logged_file"
+  printf '%s reset_observed=%s hello_eligible_after=%s\n' \
+    "$(date '+%F %T %Z')" \
+    "$(date -d "@$resets_at" '+%F %T %Z')" \
+    "$(date -d "@$((resets_at + GRACE_SECONDS))" '+%F %T %Z')" >> "$log_file"
+fi
+
 last_seen=0
 last_handled=0
 [[ -r "$seen_file" ]] && read -r last_seen < "$seen_file" || true
@@ -43,10 +56,6 @@ last_handled=0
 # First observation: record the server-provided reset and its safe send time.
 if (( last_seen == 0 )); then
   printf '%s\n' "$resets_at" > "$seen_file"
-  printf '%s reset_observed=%s hello_eligible_after=%s\n' \
-    "$(date '+%F %T %Z')" \
-    "$(date -d "@$resets_at" '+%F %T %Z')" \
-    "$(date -d "@$((resets_at + GRACE_SECONDS))" '+%F %T %Z')" >> "$log_file"
   exit 0
 fi
 
@@ -61,10 +70,6 @@ if (( resets_at > last_seen && last_handled < last_seen )); then
 else
   if (( resets_at != last_seen )); then
     printf '%s\n' "$resets_at" > "$seen_file"
-    printf '%s reset_observed=%s hello_eligible_after=%s\n' \
-      "$(date '+%F %T %Z')" \
-      "$(date -d "@$resets_at" '+%F %T %Z')" \
-      "$(date -d "@$((resets_at + GRACE_SECONDS))" '+%F %T %Z')" >> "$log_file"
   fi
   exit 0
 fi

@@ -94,7 +94,8 @@ logs. It does not remove Codex or its authentication.
 - Invocations use `codex exec --ignore-user-config --ephemeral --sandbox read-only`.
 - `--ignore-user-config` keeps Codex authentication but avoids loading personal
   config such as optional MCP servers for this scheduler-only request.
-- The log records `reset_observed` and `hello_eligible_after` for each reset.
+- The log records every newly reported `reset_observed` time and its matching
+  `hello_eligible_after` time.
 - If the JSON-RPC response is unavailable or malformed, no prompt is sent.
 - `codex app-server` is marked experimental by Codex CLI; the included reader
   checks its response rather than scraping UI text.
